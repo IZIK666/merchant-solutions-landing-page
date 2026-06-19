@@ -9,14 +9,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Call OpenAI
+      - name: Generate AI response
+        id: ai
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          curl https://api.openai.com/v1/responses \
+          RESPONSE=$(curl -s https://api.openai.com/v1/responses \
           -H "Authorization: Bearer $OPENAI_API_KEY" \
           -H "Content-Type: application/json" \
           -d '{
             "model": "gpt-4.1-mini",
-            "input": "You are a senior developer. A GitHub issue was opened. Give a short technical solution."
-          }'
+            "input": "You are a senior software engineer. Reply to this GitHub issue with a clear solution: fix the problem and explain briefly."
+          }')
+
+          echo "$RESPONSE" > response.json
+
+      - name: Post comment to issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMENT=$(cat response.json | python3 -c "import sys, json; print(json.load(sys.stdin)['output'][0]['content'][0]['text'])")
+
+          curl -s -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+          -d "{\"body\":\"$COMMENT\"}"
