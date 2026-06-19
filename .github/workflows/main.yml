@@ -4,12 +4,15 @@ on:
   issues:
     types: [opened]
 
+permissions:
+  issues: write
+
 jobs:
   respond:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Generate AI response
+      - name: Call OpenAI
         id: ai
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -19,17 +22,22 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{
             "model": "gpt-4.1-mini",
-            "input": "You are a senior software engineer. Reply to this GitHub issue with a clear solution: fix the problem and explain briefly."
+            "input": "You are a senior developer. Reply to a GitHub issue with a short fix explanation."
           }')
 
           echo "$RESPONSE" > response.json
 
-      - name: Post comment to issue
+      - name: Extract text
+        id: extract
+        run: |
+          cat response.json
+
+      - name: Post comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          COMMENT=$(cat response.json | python3 -c "import sys, json; print(json.load(sys.stdin)['output'][0]['content'][0]['text'])")
-
+          COMMENT="AI is working - check logs for response"
+          
           curl -s -X POST \
           -H "Authorization: token $GITHUB_TOKEN" \
           -H "Accept: application/vnd.github+json" \
