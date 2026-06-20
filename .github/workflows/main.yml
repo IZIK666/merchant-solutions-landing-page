@@ -1,4 +1,106 @@
-name: AI PR Patch Bot
+name: AI PR Patch Botname: AI PR Bot Stable
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Read repo structure
+        run: |
+          ls -R > repo.txt
+
+      - name: Call OpenAI (safe JSON output)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          ISSUE_BODY="${{ github.event.issue.body }}"
+          REPO=$(cat repo.txt)
+
+          RESPONSE=$(curl -s https://api.openai.com/v1/responses \
+          -H "Authorization: Bearer $OPENAI_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"model\": \"gpt-4.1-mini\",
+            \"input\": \"You are a senior software engineer.\n\nIMPORTANT:\nReturn ONLY valid JSON.\nNo explanation. No markdown.\n\nFORMAT:\n{ \\\"files\\\": [ { \\\"path\\\": \\\"index.html\\\", \\\"content\\\": \\\"updated content here\\\" } ] }\n\nRULES:\n- Always return valid JSON\n- Modify only relevant files\n- If unsure, edit index.html\n\nRepository:\n$REPO\n\nIssue Title:\n$ISSUE_TITLE\n\nIssue Body:\n$ISSUE_BODY\"
+          }")
+
+          echo "$RESPONSE" > ai.json
+
+      - name: Extract clean JSON
+        run: |
+          python3 - << 'EOF'
+          import json
+
+          raw = open("ai.json").read()
+
+          start = raw.find("{")
+          end = raw.rfind("}") + 1
+
+          clean = raw[start:end]
+
+          with open("changes.json", "w") as f:
+              f.write(clean)
+
+          print("Clean JSON extracted")
+          EOF
+
+      - name: Apply file changes
+        run: |
+          python3 - << 'EOF'
+          import json, os
+
+          data = json.load(open("changes.json"))
+
+          for file in data.get("files", []):
+              path = file["path"]
+              content = file["content"]
+
+              os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+
+              with open(path, "w") as f:
+                  f.write(content)
+
+              print("Updated:", path)
+          EOF
+
+      - name: Create branch + commit
+        run: |
+          git config user.name "AI Agent"
+          git config user.email "ai@bot.com"
+
+          git checkout -b ai-patch-${{ github.run_id }}
+
+          git add .
+          git commit -m "AI automated patch from issue" || echo "No changes to commit"
+          git push origin ai-patch-${{ github.run_id }}
+
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/${{ github.repository }}/pulls \
+          -d "{
+            \"title\": \"AI Patch: ${{ github.event.issue.title }}\",
+            \"head\": \"ai-patch-${{ github.run_id }}\",
+            \"base\": \"main\",
+            \"body\": \"Automated AI-generated code changes based on issue.\"
+          }"
 
 on:
   issues:
@@ -34,64 +136,4 @@ jobs:
           -H "Content-Type: application/json" \
           -d "{
             \"model\": \"gpt-4.1-mini\",
-            \"input\": \"You are an expert software engineer working inside a GitHub repository.\\n\\nReturn ONLY valid JSON with file changes.\\n\\nRULES:\\n- Output must be JSON only\\n- Each change must include file path + full new content\\n- Do not explain\\n\\nFORMAT:\\n{ \\\"files\\\": [ { \\\"path\\\": \\\"index.html\\\", \\\"content\\\": \\\"...\\\" } ] }\\n\\nRepository structure:\\n$REPO\\n\\nIssue Title:\\n$ISSUE_TITLE\\n\\nIssue Body:\\n$ISSUE_BODY\"
-          }")
-
-          echo "$RESPONSE" > ai.json
-
-      - name: Extract JSON safely
-        run: |
-          python3 - << 'EOF'
-          import json
-
-          raw = open("ai.json").read()
-          data = json.loads(raw)
-
-          content = data["output"][0]["content"][0]["text"]
-          with open("changes.json", "w") as f:
-              f.write(content)
-          EOF
-
-      - name: Apply changes to repo
-        run: |
-          python3 - << 'EOF'
-          import json, os
-
-          data = json.load(open("changes.json"))
-
-          for file in data["files"]:
-              path = file["path"]
-              content = file["content"]
-
-              os.makedirs(os.path.dirname(path), exist_ok=True)
-              with open(path, "w") as f:
-                  f.write(content)
-
-          print("Files updated")
-          EOF
-
-      - name: Commit changes
-        run: |
-          git config user.name "AI Agent"
-          git config user.email "ai@bot.com"
-
-          git checkout -b ai-patch-${{ github.run_id }}
-
-          git add .
-          git commit -m "AI automated patch from issue"
-          git push origin ai-patch-${{ github.run_id }}
-
-      - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -s -X POST \
-          -H "Authorization: token $GITHUB_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          https://api.github.com/repos/${{ github.repository }}/pulls \
-          -d "{
-            \"title\": \"AI Patch: ${{ github.event.issue.title }}\",
-            \"head\": \"ai-patch-${{ github.run_id }}\",
-            \"base\": \"main\",
-            \"body\": \"Automated AI code patch generated from issue.\"
-          }"
+            \"input\": \"You are an expert software engineer working inside a GitHub repository.\\n\\nReturn ONLY valid JSON with file changes.\\n\\nRULES:\\n- Output must be JSON only\\n- Each change must include file path 
