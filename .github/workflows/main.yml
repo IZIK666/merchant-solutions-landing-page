@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Read repo structure
+      - name: Read repo
         run: ls -R > repo.txt
 
       - name: Call OpenAI safely
@@ -27,33 +27,36 @@ jobs:
           ISSUE_TITLE="${{ github.event.issue.title }}"
           ISSUE_BODY="${{ github.event.issue.body }}"
 
+          PROMPT="You are a senior software engineer. Return ONLY valid JSON.
+          Format:
+          { \"files\": [ { \"path\": \"index.html\", \"content\": \"hello\" } ] }
+
+          Repo:
+          $(cat repo.txt)
+
+          Issue:
+          $ISSUE_TITLE
+          $ISSUE_BODY"
+
           RESPONSE=$(curl -s https://api.openai.com/v1/responses \
           -H "Authorization: Bearer $OPENAI_API_KEY" \
           -H "Content-Type: application/json" \
-          --data-binary @- <<EOF
-{
-  "model": "gpt-4.1-mini",
-  "input": "You are a senior software engineer.\n\nReturn ONLY valid JSON.\nFormat:\n{ \"files\": [ { \"path\": \"index.html\", \"content\": \"updated content\" } ] }\n\nRepo:\n$(cat repo.txt)\n\nIssue Title:\n$ISSUE_TITLE\n\nIssue Body:\n$ISSUE_BODY"
-}
-EOF
-)
+          -d "{\"model\":\"gpt-4.1-mini\",\"input\":\"$PROMPT\"}")
 
           echo "$RESPONSE" > ai.json
 
-      - name: Extract JSON safely
+      - name: Extract JSON
         run: |
           python3 - << 'EOF'
           import json
 
           raw = open("ai.json").read()
-
           start = raw.find("{")
           end = raw.rfind("}") + 1
 
           clean = raw[start:end]
 
-          with open("changes.json", "w") as f:
-              f.write(clean)
+          open("changes.json","w").write(clean)
           EOF
 
       - name: Apply changes
@@ -63,26 +66,24 @@ EOF
 
           data = json.load(open("changes.json"))
 
-          for file in data.get("files", []):
-              path = file["path"]
-              content = file["content"]
+          for f in data.get("files", []):
+              path = f["path"]
+              content = f["content"]
 
               os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-
-              with open(path, "w") as f:
-                  f.write(content)
+              open(path, "w").write(content)
           EOF
 
-      - name: Commit changes
+      - name: Create branch + commit
         run: |
-          git config user.name "AI Agent"
-          git config user.email "ai@bot.com"
+          git config user.name "AI Bot"
+          git config user.email "bot@ai.com"
 
-          git checkout -b ai-patch-${{ github.run_id }}
+          git checkout -b ai-${{ github.run_id }}
 
           git add .
-          git commit -m "AI patch from issue" || echo "No changes"
-          git push origin ai-patch-${{ github.run_id }}
+          git commit -m "AI patch" || echo "no changes"
+          git push origin ai-${{ github.run_id }}
 
       - name: Create PR
         env:
@@ -92,9 +93,4 @@ EOF
           -H "Authorization: token $GITHUB_TOKEN" \
           -H "Accept: application/vnd.github+json" \
           https://api.github.com/repos/${{ github.repository }}/pulls \
-          -d "{
-            \"title\": \"AI Patch: ${{ github.event.issue.title }}\",
-            \"head\": \"ai-patch-${{ github.run_id }}\",
-            \"base\": \"main\",
-            \"body\": \"Automated AI code change\"
-          }"
+          -d "{\"title\":\"AI Patch\",\"head\":\"ai-${{ github.run_id }}\",\"base\":\"main\"}"
