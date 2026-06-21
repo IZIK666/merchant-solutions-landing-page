@@ -1,3 +1,25 @@
+Skip to content
+IZIK666
+merchant-solutions-landing-page
+Repository navigation
+Code
+Issues
+11
+ (11)
+Pull requests
+Agents
+Discussions
+Actions
+Projects
+Security and quality
+Insights
+Settings
+.github/workflows/main.yml
+Update main.yml #12
+All jobs
+Run details
+Workflow file for this run
+.github/workflows/main.yml at 9150306
 name: AI Hero Bot
 
 on:
@@ -31,12 +53,18 @@ jobs:
           python3 - <<'PY'
           import json, os, urllib.request
           from pathlib import Path
-
           file = Path("components/hero.tsx")
           content = file.read_text()
-
           prompt = f"""
 You are a senior frontend engineer.
+ Check failure on line 39 in .github/workflows/main.yml
+
+
+GitHub Actions
+/ .github/workflows/main.yml
+Invalid workflow file
+
+You have an error in your yaml syntax on line 39
 
 Return ONLY JSON:
 {{
@@ -52,7 +80,6 @@ Issue:
 {os.environ["ISSUE_TITLE"]}
 {os.environ["ISSUE_BODY"]}
 """
-
           req = urllib.request.Request(
               "https://api.openai.com/v1/responses",
               data=json.dumps({
@@ -92,14 +119,11 @@ Issue:
         run: |
           git config user.name "ai-bot"
           git config user.email "ai@bot.com"
-
           branch="ai-hero-${{ github.run_id }}"
           git checkout -b $branch
-
           git add .
           git commit -m "AI hero update" || echo "no changes"
           git push origin $branch
-
       - name: Create PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
