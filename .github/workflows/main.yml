@@ -1,4 +1,4 @@
-name: AI PR Bot Stable
+name: AI PR Bot Fixed
 
 on:
   issues:
@@ -20,37 +20,27 @@ jobs:
       - name: Read repo
         run: ls -R > repo.txt
 
-      - name: Call OpenAI safely
+      - name: Call OpenAI (fixed safe version)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           ISSUE_TITLE="${{ github.event.issue.title }}"
           ISSUE_BODY="${{ github.event.issue.body }}"
 
-          PROMPT="You are a senior software engineer. Return ONLY valid JSON.
-          Format:
-          { \"files\": [ { \"path\": \"index.html\", \"content\": \"hello\" } ] }
-
-          Repo:
-          $(cat repo.txt)
-
-          Issue:
-          $ISSUE_TITLE
-          $ISSUE_BODY"
-
           RESPONSE=$(curl -s https://api.openai.com/v1/responses \
           -H "Authorization: Bearer $OPENAI_API_KEY" \
           -H "Content-Type: application/json" \
-          -d "{\"model\":\"gpt-4.1-mini\",\"input\":\"$PROMPT\"}")
+          -d "{\"model\":\"gpt-4.1-mini\",\"input\":\"You are a senior software engineer. Return ONLY valid JSON. Format: { \\\"files\\\": [ { \\\"path\\\": \\\"index.html\\\", \\\"content\\\": \\\"hello\\\" } ] }. Issue: $ISSUE_TITLE $ISSUE_BODY\"}")
 
           echo "$RESPONSE" > ai.json
 
-      - name: Extract JSON
+      - name: Extract JSON safely
         run: |
           python3 - << 'EOF'
           import json
 
           raw = open("ai.json").read()
+
           start = raw.find("{")
           end = raw.rfind("}") + 1
 
@@ -71,10 +61,12 @@ jobs:
               content = f["content"]
 
               os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-              open(path, "w").write(content)
+
+              with open(path, "w") as file:
+                  file.write(content)
           EOF
 
-      - name: Create branch + commit
+      - name: Commit changes
         run: |
           git config user.name "AI Bot"
           git config user.email "bot@ai.com"
