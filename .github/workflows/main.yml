@@ -1,4 +1,4 @@
-name: AI Hero Improvement Bot
+name: AI Hero Bot
 
 on:
   issues:
@@ -10,153 +10,107 @@ permissions:
   issues: write
 
 jobs:
-  improve-hero:
+  ai-hero:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
-      - name: Update hero copy with AI
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Update hero with AI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           python3 - <<'PY'
-          import json
-          import os
-          import re
-          import sys
-          import urllib.request
+          import json, os, urllib.request
           from pathlib import Path
 
-          path = Path("components/hero.tsx")
-          content = path.read_text(encoding="utf-8")
+          file = Path("components/hero.tsx")
+          content = file.read_text()
 
-          prompt = "\n".join([
-              "You are a senior conversion-focused frontend engineer.",
-              "Return ONLY valid JSON with exactly four string keys:",
-              "headline, subheadline, primary_cta, secondary_cta.",
-              "Do not include markdown fences or explanation.",
-              "Write concise, high-converting copy for a payment-processing landing page hero.",
-              "",
-              f"Issue title: {os.environ['ISSUE_TITLE']}",
-              f"Issue body: {os.environ['ISSUE_BODY']}",
-          ])
+          prompt = f"""
+You are a senior frontend engineer.
 
-          payload = json.dumps({
-              "model": "gpt-4.1-mini",
-              "input": prompt,
-          }).encode("utf-8")
+Return ONLY JSON:
+{{
+  "headline": "...",
+  "subheadline": "...",
+  "primary_cta": "...",
+  "secondary_cta": "..."
+}}
+
+Make it better for a payment landing page.
+
+Issue:
+{os.environ["ISSUE_TITLE"]}
+{os.environ["ISSUE_BODY"]}
+"""
 
           req = urllib.request.Request(
               "https://api.openai.com/v1/responses",
-              data=payload,
+              data=json.dumps({
+                  "model": "gpt-4.1-mini",
+                  "input": prompt
+              }).encode(),
               headers={
                   "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
-                  "Content-Type": "application/json",
-              },
-              method="POST",
+                  "Content-Type": "application/json"
+              }
           )
-
-          defaults = {
-              "headline": "Get approved faster with payment processing built for growth",
-              "subheadline": "We connect growing and digital-first merchants with vetted, certified payment processors. Improve approval odds, stay compliant, and scale without handling sensitive card data yourself.",
-              "primary_cta": "Get Started Today",
-              "secondary_cta": "See How It Works",
-          }
-
-          data = defaults
 
           try:
-              with urllib.request.urlopen(req, timeout=120) as r:
-                  resp = json.load(r)
-              text = resp["output"][0]["content"][0]["text"]
-              start = text.find("{")
-              end = text.rfind("}") + 1
-              if start == -1 or end == 0:
-                  raise ValueError("No JSON object in model output")
-              data = json.loads(text[start:end])
-              for key in defaults:
-                  if key not in data or not isinstance(data[key], str) or not data[key].strip():
-                      data = defaults
-                      break
-          except Exception as exc:
-              print(f"OpenAI fallback used: {exc}", file=sys.stderr)
+              res = urllib.request.urlopen(req).read()
+              data = json.loads(res)
+              text = data["output"][0]["content"][0]["text"]
+              start, end = text.find("{"), text.rfind("}") + 1
+              ai = json.loads(text[start:end])
+          except:
+              ai = {
+                  "headline": "Get approved faster with payments",
+                  "subheadline": "Simple onboarding for merchants worldwide",
+                  "primary_cta": "Get Started",
+                  "secondary_cta": "Learn More"
+              }
 
-          content = re.sub(
-              r'<h1 className="text-balance text-4xl font-bold tracking-tight md:text-6xl">.*?</h1>',
-              f'''<h1 className="text-balance text-4xl font-bold tracking-tight md:text-6xl">
-                {data["headline"]}
-              </h1>''',
-              content,
-              count=1,
-              flags=re.S,
+          content = content.replace(
+              content.split("<h1")[1].split("</h1>")[0],
+              f'h1>{ai["headline"]}<'
           )
 
-          content = re.sub(
-              r'<p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">.*?</p>',
-              f'''<p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
-                {data["subheadline"]}
-              </p>''',
-              content,
-              count=1,
-              flags=re.S,
-          )
-
-          content = content.replace("Get Started Today", data["primary_cta"])
-          content = content.replace("See How It Works", data["secondary_cta"])
-
-          path.write_text(content, encoding="utf-8")
-          print("components/hero.tsx updated")
+          file.write_text(content)
+          print("updated hero")
           PY
 
-      - name: Create branch, commit, and push
+      - name: Create branch + commit
         run: |
-          git config user.name "AI Bot"
-          git config user.email "bot@ai.com"
+          git config user.name "ai-bot"
+          git config user.email "ai@bot.com"
 
           branch="ai-hero-${{ github.run_id }}"
-          git checkout -b "$branch"
-          git add components/hero.tsx
-          git commit -m "Improve homepage hero from issue" || echo "No changes to commit"
-          git push origin "$branch"
-- name: Open Pull Request
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    branch="ai-hero-${{ github.run_id }}"
+          git checkout -b $branch
 
-    RESPONSE=$(curl -s -X POST \
-      -H "Authorization: token $GITHUB_TOKEN" \
-      -H "Accept: application/vnd.github+json" \
-      https://api.github.com/repos/${{ github.repository }}/pulls \
-      -d "{
-        \"title\": \"AI Hero improvement\",
-        \"head\": \"$branch\",
-        \"base\": \"main\",
-        \"body\": \"Automated AI update from GitHub Issue\"
-      }")
+          git add .
+          git commit -m "AI hero update" || echo "no changes"
+          git push origin $branch
 
-    echo "$RESPONSE"
-          }
-
-          req = urllib.request.Request(
-              f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/pulls",
-              data=json.dumps(payload).encode("utf-8"),
-              headers={
-                  "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
-                  "Accept": "application/vnd.github+json",
-                  "Content-Type": "application/json",
-              },
-              method="POST",
-          )
-
-          with urllib.request.urlopen(req, timeout=120) as r:
-              resp = json.load(r)
-
-          print(resp.get("html_url", "PR created"))
-          PY
+      - name: Create PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls \
+            -d "{
+              \"title\": \"AI Hero Update\",
+              \"head\": \"ai-hero-${{ github.run_id }}\",
+              \"base\": \"main\",
+              \"body\": \"Automated AI update\"
+            }"
