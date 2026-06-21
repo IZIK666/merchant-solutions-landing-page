@@ -10,7 +10,7 @@ const stabilityFeatures = [
 
 export function ComplianceStability() {
   return (
-    <section id="compliance-stability" className="py-24 bg-background border-t border-border bg-[radial-gradient(ellipse_at_top,oklch(0.52_0.22_265/0.05),transparent_55%),radial-gradient(ellipse_at_bottom_right,oklch(0.7_0.16_185/0.05),transparent_50%)]">
+    <section id="compliance-stability" className="py-24 bg-background border-t border-border bg-[radial-gradient(ellipse_at_top,oklch(var(--primary)/0.05),transparent_55%),radial-gradient(ellipse_at_bottom_right,oklch(var(--accent)/0.05),transparent_50%)]">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-medium uppercase tracking-widest text-primary">Trust & Stability</p>
