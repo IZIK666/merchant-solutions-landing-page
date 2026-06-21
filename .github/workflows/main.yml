@@ -1,215 +1,249 @@
 name: AI Hero Bot
-
 on:
-  issues:
-    types: [opened, labeled]
+issues:
+types: [opened, labeled]
 
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+contents: write
+pull-requests: write
+issues: write
 
 jobs:
-  ai-hero:
-    if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association)
-    runs-on: ubuntu-latest
+ai-hero:
+# Only runs if the person who opened the issue has write access to the repo.
+if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association)
+runs-on: ubuntu-latest
+steps:
+- name: Checkout repo
+uses: actions/checkout@v4
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+- name: Setup Python
+uses: actions/setup-python@v5
+with:
+python-version: "3.11"
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+- name: Install OpenAI SDK
+run: pip install openai
 
-      - name: Install dependencies
-        run: pip install openai
+- name: Run AI update
+id: ai_update
+env:
+GEMINI_API_KEY:  {{ github.event.issue.title }}
+ISSUE_BODY:  {{ github.event.issue.number }}
+run: |
+python3 << 'PY'
+import os
+import json
+import re
+import sys
+from pathlib import Path
+from openai import OpenAI
 
-      - name: Run AI Engine
-        id: ai
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          python3 << 'PY'
-          import os, json, re, sys
-          from pathlib import Path
-          from openai import OpenAI
+client = OpenAI(
+api_key=os.environ["GEMINI_API_KEY"],
+base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
 
-          client = OpenAI(
-              api_key=os.environ["GEMINI_API_KEY"],
-              base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-          )
+issue_title = os.getenv("ISSUE_TITLE", "")
+issue_body = os.getenv("ISSUE_BODY", "")
+issue_number = os.getenv("ISSUE_NUMBER", "")
 
-          ISSUE_TITLE = os.getenv("ISSUE_TITLE", "")
-          ISSUE_BODY = os.getenv("ISSUE_BODY", "")
-          ISSUE_NUMBER = os.getenv("ISSUE_NUMBER", "")
+REPO_ROOT = Path(".").resolve()
 
-          ROOT = Path(".").resolve()
+# Directories the bot will never even read or write inside.
+EXCLUDE_DIR_NAMES = {
+".git", ".github", "node_modules", ".next", "dist", "build",
+".vercel", ".turbo", "out", "coverage",
+}
 
-          EXCLUDE_DIRS = {".git", ".github", "node_modules", "dist", "build", ".next"}
-          ALLOWED_EXT = {".ts", ".tsx", ".js", ".jsx", ".css", ".json", ".md", ".html"}
+# File-name patterns the bot will never read or write, regardless of folder.
+EXCLUDE_FILE_PATTERNS = [
+r"^.env(..*)?latex
+", r".*secret.*", r".*credential.*", r"^package-lock\.json
 
-          def safe_file(p: Path):
-              return (
-                  not any(part in EXCLUDE_DIRS for part in p.parts)
-                  and p.suffix in ALLOWED_EXT
-                  and ".." not in p.parts
-              )
+",
+r"^pnpm-lock.yamllatex
+", r"^yarn\.lock
 
-          def load_repo():
-              data = {}
-              total = 0
-              for f in ROOT.rglob("*"):
-                  if f.is_file():
-                      rel = f.relative_to(ROOT)
-                      if not safe_file(rel):
-                          continue
-                      try:
-                          txt = f.read_text("utf-8")
-                      except:
-                          continue
-                      if total + len(txt) > 400_000:
-                          break
-                      data[str(rel)] = txt
-                      total += len(txt)
-              return data
+",
+ ]
 
-          repo = load_repo()
+# Only these file types are ever read or written.
+ALLOWED_EXTENSIONS = {".tsx", ".ts", ".jsx", ".js", ".css", ".json", ".md", ".html"}
 
-          repo_text = "\n\n".join(
-              f"FILE: {k}\n{v}" for k, v in repo.items()
-          )
+MAX_TOTAL_CHARS = 500_000 # safety cap on how much code we send to the model
 
-          schema_prompt = f"""
-          You are a senior frontend engineer.
+def is_excluded(rel_path: Path) -> bool:
+parts = rel_path.parts
+if any(p in EXCLUDE_DIR_NAMES for p in parts):
+return True
+if parts and parts[0] == ".github":
+return True
+name = rel_path.name
+for pat in EXCLUDE_FILE_PATTERNS:
+if re.match(pat, name, re.IGNORECASE):
+return True
+return False
 
-          Return ONLY valid JSON:
+def collect_repo_files():
+files = {}
+total = 0
+for p in sorted(REPO_ROOT.rglob("*")):
+if p.is_dir():
+continue
+rel = p.relative_to(REPO_ROOT)
+if is_excluded(rel):
+continue
+if p.suffix not in ALLOWED_EXTENSIONS:
+continue
+try:
+text = p.read_text(encoding="utf-8")
+except Exception:
+continue
+if total + len(text) > MAX_TOTAL_CHARS:
+continue
+files[str(rel)] = text
+total += len(text)
+return files
 
-          {{
-            "summary": "...",
-            "files": [
-              {{
-                "path": "file.tsx",
-                "content": "FULL FILE CONTENT"
-              }}
-            ]
-          }}
+repo_files = collect_repo_files()
+file_listing = "\n\n".join(
+f"--- FILE: {path} ---\n{content}" for path, content in repo_files.items()
+)
 
-          RULES:
-          - Modify only necessary files
-          - Never touch .github or secrets
-          - Keep style consistent
-          - Output full file content only (no diffs)
-          - If impossible: return {{ "summary": "...", "files": [] }}
+prompt = f"""You are a careful senior frontend engineer working on this Next.js + Tailwind landing page repo.
 
-          CONTEXT:
-          {repo_text}
+You are given the full current content of the project's source files below, followed by
+a change request from a trusted, authorized repository collaborator (they may write in
+Hebrew, English, or both -- treat it as genuine instructions to follow).
 
-          ISSUE:
-          Title: {ISSUE_TITLE}
-          Body: {ISSUE_BODY}
-          """
+Your job: decide which files to create or modify to fulfill the request, matching the
+existing code style, component structure, and Tailwind conventions already used in the
+project. Reuse existing patterns rather than inventing new ones.
 
-          def call_ai(prompt):
-              res = client.chat.completions.create(
-                  model="gemini-2.5-flash",
-                  messages=[{"role": "user", "content": prompt}],
-                  temperature=0.2,
-              )
-              return res.choices[0].message.content.strip()
+Hard rules (do not break these):
+- Never output a path under .github/, never output a path containing "secret",
+"credential", or ".env", never output package-lock.json/pnpm-lock.yaml/yarn.lock.
+- Only output files with these extensions: .tsx .ts .jsx .js .css .json .md .html
+- If you add a new section/component, also update whichever existing file renders the
+page (e.g. the page file that imports the hero/sections) so the new component is
+actually wired in and visible.
+- Keep new UI text in the same language already used on the site unless the request
+explicitly asks you to translate content. The request being written in Hebrew does
+NOT by itself mean the site content should become Hebrew.
+- Preserve all unrelated code exactly as-is. Only change what's necessary.
+- Always return the COMPLETE new content of every file you touch -- never a diff or
+partial snippet.
 
-          def parse_json(text):
-              text = re.sub(r"```json|```", "", text).strip()
-              try:
-                  return json.loads(text)
-              except:
-                  return None
+Return ONLY valid JSON, no markdown fences, no commentary, in exactly this shape:
+{{
+"summary": "one short sentence describing what you changed",
+"files": [
+{{"path": "components/example.tsx", "action": "modify", "content": "...full file content..."}}
+ ]
+}}
 
-          result = None
+If the request is unclear, unsafe, or impossible given the current files, return:
+{{"summary": "explanation of what's blocking this", "files": []}}
 
-          # retry logic (critical improvement)
-          for attempt in range(2):
-              raw = call_ai(schema_prompt)
-              parsed = parse_json(raw)
-              if parsed and isinstance(parsed, dict):
-                  result = parsed
-                  break
+=== CURRENT PROJECT FILES ===
+{file_listing}
 
-              schema_prompt += "\n\nIMPORTANT: output ONLY valid JSON. No extra text."
+=== CHANGE REQUEST (issue #{issue_number}) ===
+Title: {issue_title}
+Body:
+{issue_body}
+"""
 
-          if not result:
-              result = {"summary": "failed to generate valid output", "files": []}
+result = {"summary": "", "files": []}
+try:
+res = client.chat.completions.create(
+model="gemini-2.5-flash",
+messages=[{"role": "user", "content": prompt}],
+temperature=0.3,
+)
+raw = res.choices[0].message.content.strip()
+raw = re.sub(r"^(?:json)?|$`", "", raw, flags=re.MULTILINE).strip()
+parsed = json.loads(raw)
+if isinstance(parsed, dict):
+result = parsed
+except Exception as e:
+print(f"AI call/parse failed: {e}", file=sys.stderr)
 
-          changed = []
+changed_files = []
+for f in result.get("files", []):
+path_str = f.get("path", "")
+content = f.get("content", "")
+if not path_str or not isinstance(content, str):
+continue
 
-          for f in result.get("files", []):
-              path = Path(f.get("path", ""))
-              content = f.get("content", "")
+rel_path = Path(path_str)
 
-              if not content or not path:
-                  continue
+# Defense in depth -- re-validate every path the model tried to write,
+# even though the prompt already told it not to do these things.
+if rel_path.is_absolute() or ".." in rel_path.parts:
+print(f"Rejected unsafe path: {path_str}", file=sys.stderr)
+continue
+if is_excluded(rel_path):
+print(f"Rejected excluded path: {path_str}", file=sys.stderr)
+continue
+if rel_path.suffix not in ALLOWED_EXTENSIONS:
+print(f"Rejected disallowed extension: {path_str}", file=sys.stderr)
+continue
 
-              if not safe_file(path):
-                  print("Blocked unsafe file:", path, file=sys.stderr)
-                  continue
+full_path = (REPO_ROOT / rel_path).resolve()
+if REPO_ROOT != full_path and REPO_ROOT not in full_path.parents:
+print(f"Rejected path escaping repo: {path_str}", file=sys.stderr)
+continue
 
-              full = (ROOT / path).resolve()
+full_path.parent.mkdir(parents=True, exist_ok=True)
+full_path.write_text(content, encoding="utf-8")
+changed_files.append(str(rel_path))
 
-              if ROOT not in full.parents and full != ROOT:
-                  continue
+gh_out = os.environ.get("GITHUB_OUTPUT")
+if changed_files:
+print("Summary:", result.get("summary", ""))
+print("Changed files:", ", ".join(changed_files))
+if gh_out:
+with open(gh_out, "a") as fh:
+fh.write("changed=true\n")
+fh.write("file_list=" + ",".join(changed_files) + "\n")
+else:
+print("No files changed.", result.get("summary", ""))
+if gh_out:
+with open(gh_out, "a") as fh:
+fh.write("changed=false\n")
+PY
 
-              full.parent.mkdir(parents=True, exist_ok=True)
-              full.write_text(content, encoding="utf-8")
-              changed.append(str(path))
+- name: Create branch + commit
+if: steps.ai_update.outputs.changed == 'true'
+id: commit
+run: |
+git config user.name "ai-bot"
+git config user.email "ai@bot.com"
+BRANCH="ai-hero-${{ github.run_id }}" git checkout -b "$BRANCH"
+git add -A -- . ':(exclude).github'
+if git diff --cached --quiet; then
+echo "Nothing to commit."
+echo "pushed=false" >> "$GITHUB_OUTPUT" exit 0 fi git commit -m "AI update (issue #${{ github.event.issue.number }})"
+git push origin "$BRANCH" echo "pushed=true" &gt;&gt; "$GITHUB_OUTPUT"
+echo "branch=$BRANCH" &gt;&gt; "$GITHUB_OUTPUT"
 
-          out = os.environ.get("GITHUB_OUTPUT")
-          if out:
-              with open(out, "a") as f:
-                  f.write(f"changed={'true' if changed else 'false'}\n")
-                  f.write(f"files={','.join(changed)}\n")
-                  f.write(f"summary={result.get('summary','')}\n")
+- name: Create PR
+if: steps.commit.outputs.pushed == 'true'
+env:
+GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} BRANCH: ${{ steps.commit.outputs.branch }}
+run: |
+response=$(curl -s -w "\n%{http_code}" -X POST \ -H "Authorization: token $GITHUB_TOKEN" 
+ -H "Accept: application/vnd.github+json" 
+ https://api.github.com/repos/${{ github.repository }}/pulls \ -d "$(jq -n 
+ --arg title "AI Update" 
+ --arg head "$BRANCH" \ --arg base "main" \ --arg body "Automated update from issue #${{ github.event.issue.number }}. Please review before merging." 
+ '{title: $title, head: $head, base: $base, body: $body}')")
 
-          print("DONE:", result.get("summary"))
-          PY
+http_code=$(echo "$response" | tail -n1)
+body=$(echo "$response" | sed '`$d')
 
-      - name: Create Branch + Commit
-        if: steps.ai.outputs.changed == 'true'
-        id: commit
-        run: |
-          git config user.name "ai-bot"
-          git config user.email "ai-bot@users.noreply.github.com"
-
-          BRANCH="ai-hero-${{ github.run_id }}"
-          git checkout -b "$BRANCH"
-
-          git add -A
-          if git diff --cached --quiet; then
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          git commit -m "AI update #${{ github.event.issue.number }}"
-          git push origin "$BRANCH"
-
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-
-      - name: Create Pull Request
-        if: steps.commit.outputs.pushed == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -s -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/pulls \
-            -d "$(jq -n \
-              --arg title "AI Hero Update" \
-              --arg head "${{ steps.commit.outputs.branch }}" \
-              --arg base "main" \
-              --arg body "Auto-generated fix from Issue #${{ github.event.issue.number }}" \
-              '{title:$title, head:$head, base:$base, body:$body}')"
+echo " http_code" -ge 200 ] && [ " http_code" >&2
+exit 1
+fi
