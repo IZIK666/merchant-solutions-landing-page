@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 import { submitLead, type LeadState } from "@/app/actions/submit-lead"
+import { trackFormSubmit } from "@/lib/tracking"
 
 const initialState: LeadState = { status: "idle" }
 
@@ -26,6 +27,7 @@ export function ContactForm() {
     if (state.status === "success") {
       formRef.current?.reset()
       setIndustry("")
+      trackFormSubmit("contact-form")
     }
   }, [state.status])
 
