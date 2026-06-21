@@ -1,4 +1,4 @@
-name: AI Hero Bot
+.name: AI Hero Bot
 
 on:
   issues:
@@ -24,30 +24,25 @@ jobs:
       - name: Install OpenAI SDK
         run: pip install openai
 
-      - name: Run AI update (single file, no scripts)
+      - name: Run AI update
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
-
         run: |
           python3 << 'PY'
-          import os
-          import json
-          import re
-          from pathlib import Path
-          from openai import OpenAI
+import os
+import json
+import re
+from pathlib import Path
+from openai import OpenAI
 
-          # -----------------------------
-          # OpenAI init
-          # -----------------------------
-          client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-          issue_title = os.getenv("ISSUE_TITLE", "")
-          issue_body = os.getenv("ISSUE_BODY", "")
+issue_title = os.getenv("ISSUE_TITLE", "")
+issue_body = os.getenv("ISSUE_BODY", "")
 
-          prompt = f"""
-Return ONLY valid JSON:
+prompt = f"""Return ONLY valid JSON:
 {{
   "headline": "",
   "subheadline": "",
@@ -62,78 +57,49 @@ Issue:
 {issue_body}
 """
 
-          # -----------------------------
-          # AI call
-          # -----------------------------
-          try:
-              res = client.responses.create(
-                  model="gpt-4.1-mini",
-                  input=prompt
-              )
+try:
+    res = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7
+    )
+    data = json.loads(res.choices[0].message.content.strip())
+except Exception:
+    data = {}
 
-              data = json.loads(res.output_text.strip())
+ai = {
+    "headline": data.get("headline", "Fast Payments for Modern Businesses"),
+    "subheadline": data.get("subheadline", "Simple onboarding and global payouts"),
+    "primary_cta": data.get("primary_cta", "Get Started"),
+    "secondary_cta": data.get("secondary_cta", "Learn More")
+}
 
-          except Exception:
-              data = {}
+file_path = Path("components/hero.tsx")
+if not file_path.exists():
+    print("hero.tsx missing")
+    exit(1)
 
-          ai = {
-              "headline": data.get("headline", "Fast Payments for Modern Businesses"),
-              "subheadline": data.get("subheadline", "Simple onboarding and global payouts"),
-              "primary_cta": data.get("primary_cta", "Get Started"),
-              "secondary_cta": data.get("secondary_cta", "Learn More")
-          }
+content = file_path.read_text()
 
-          # -----------------------------
-          # Load hero file
-          # -----------------------------
-          file_path = Path("components/hero.tsx")
+content = re.sub(r"<h1[^>]*>.*?</h1>", f"<h1>{ai['headline']}</h1>", content, flags=re.DOTALL)
+content = re.sub(r"<h2[^>]*>.*?</h2>", f"<h2>{ai['subheadline']}</h2>", content, flags=re.DOTALL)
 
-          if not file_path.exists():
-              print("hero.tsx missing")
-              exit(1)
+# Better button replacement
+content = re.sub(r'(<button[^>]*>)(.*?)(</button>)', 
+                 lambda m: m.group(1) + (ai["primary_cta"] if "primary" in m.group(2).lower() or m.start() < len(content)//2 else ai["secondary_cta"]) + m.group(3), 
+                 content, count=2, flags=re.DOTALL)
 
-          content = file_path.read_text()
-
-          # -----------------------------
-          # Safe updates (no split, no crash)
-          # -----------------------------
-          content = re.sub(
-              r"<h1[^>]*>.*?</h1>",
-              f"<h1>{ai['headline']}</h1>",
-              content,
-              flags=re.DOTALL
-          )
-
-          content = re.sub(
-              r"<h2[^>]*>.*?</h2>",
-              f"<h2>{ai['subheadline']}</h2>",
-              content,
-              flags=re.DOTALL
-          )
-
-          buttons = re.findall(r"<button[^>]*>(.*?)</button>", content, flags=re.DOTALL)
-
-          if len(buttons) >= 1:
-              content = content.replace(buttons[0], ai["primary_cta"])
-
-          if len(buttons) >= 2:
-              content = content.replace(buttons[1], ai["secondary_cta"])
-
-          file_path.write_text(content)
-
-          print("Hero updated successfully")
-          PY
+file_path.write_text(content)
+print("Hero updated successfully")
+PY
 
       - name: Create branch + commit
         run: |
           git config user.name "ai-bot"
           git config user.email "ai@bot.com"
-
           BRANCH="ai-hero-${{ github.run_id }}"
-
           git checkout -b $BRANCH
           git add components/hero.tsx
-
           git commit -m "AI hero update" || exit 0
           git push origin $BRANCH
 
@@ -145,9 +111,9 @@ Issue:
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${{ github.repository }}/pulls \
-            -d "{
-              \"title\": \"AI Hero Update\",
-              \"head\": \"ai-hero-${{ github.run_id }}\",
-              \"base\": \"main\",
-              \"body\": \"Automated AI update\"
-            }"
+            -d '{
+              "title": "AI Hero Update",
+              "head": "ai-hero-${{ github.run_id }}",
+              "base": "main",
+              "body": "Automated AI update"
+            }'
