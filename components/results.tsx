@@ -29,7 +29,7 @@ const testimonials = [
 
 export function Results() {
   return (
-    <section id="results" className="py-24 bg-background border-t border-border bg-[radial-gradient(ellipse_at_top,oklch(0.52_0.22_265/0.05),transparent_55%),radial-gradient(ellipse_at_bottom_right,oklch(0.7_0.16_185/0.05),transparent_50%)]">
+    <section id="results" className="py-24 bg-background border-t border-border bg-[radial-gradient(ellipse_at_top,oklch(var(--primary)/0.05),transparent_55%),radial-gradient(ellipse_at_bottom_right,oklch(var(--accent)/0.05),transparent_50%)]">
       <div className="mx-auto max-w-7xl px-6">
         <div className="grid gap-6 sm:grid-cols-3">
           {stats.map((stat) => (

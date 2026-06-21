@@ -12,11 +12,11 @@ export function Hero() {
     <section className="relative overflow-hidden pt-32 pb-20 md:pt-44 md:pb-28">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,oklch(0.52_0.22_265/0.18),transparent_55%),radial-gradient(ellipse_at_bottom_right,oklch(0.7_0.16_185/0.16),transparent_50%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,oklch(var(--primary)/0.18),transparent_55%),radial-gradient(ellipse_at_bottom_right,oklch(var(--accent)/0.16),transparent_50%)]"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl"
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/30 blur-3xl"
       />
       <div className="mx-auto max-w-7xl px-6 animate-fade-in">
         <div className="mx-auto max-w-3xl text-center">

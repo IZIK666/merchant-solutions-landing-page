@@ -25,7 +25,7 @@ const proof = [
 
 export function SocialProof() {
   return (
-    <section className="py-12 md:py-16 bg-gradient-to-r from-primary/5 to-accent/5 border-y border-border">
+    <section className="py-12 md:py-16 bg-gradient-to-r from-primary/10 to-accent/10 border-y border-border">
       <div className="mx-auto max-w-7xl px-6">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {proof.map((item) => (
