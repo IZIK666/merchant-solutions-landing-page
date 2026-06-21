@@ -11,6 +11,7 @@ import { Results } from "@/components/results"
 import { ContactForm } from "@/components/contact-form"
 import { SiteFooter } from "@/components/site-footer"
 import { StickyCTA } from "@/components/sticky-cta"
+import { FadeInOnScroll } from "@/components/fade-in-on-scroll"
 
 export default function Home() {
   return (
@@ -18,15 +19,33 @@ export default function Home() {
       <SiteHeader />
       <main>
         <Hero />
-        <SocialProof />
-        <WhyUs />
-        <HowItWorks />
-        <Industries />
-        <CardAcquiring />
-        <ComplianceStability />
-        <OurSolutions />
-        <Results />
-        <ContactForm />
+        <FadeInOnScroll>
+          <SocialProof />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <WhyUs />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <HowItWorks />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <Industries />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <CardAcquiring />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <ComplianceStability />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <OurSolutions />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <Results />
+        </FadeInOnScroll>
+        <FadeInOnScroll>
+          <ContactForm />
+        </FadeInOnScroll>
       </main>
       <SiteFooter />
       <StickyCTA />

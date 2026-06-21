@@ -38,14 +38,14 @@ export function HowItWorks() {
 
         <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {steps.map((step) => (
-            <div
+            <Card
               key={step.n}
               className="relative rounded-xl border border-border bg-card p-6"
             >
               <span className="text-3xl font-bold text-primary/30">{step.n}</span>
               <h3 className="mt-3 font-semibold">{step.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.desc}</p>
-            </div>
+            </Card>
           ))}
         </div>
       </div>
