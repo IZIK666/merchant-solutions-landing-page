@@ -1,25 +1,3 @@
-Skip to content
-IZIK666
-merchant-solutions-landing-page
-Repository navigation
-Code
-Issues
-11
- (11)
-Pull requests
-Agents
-Discussions
-Actions
-Projects
-Security and quality
-Insights
-Settings
-.github/workflows/main.yml
-Update main.yml #12
-All jobs
-Run details
-Workflow file for this run
-.github/workflows/main.yml at 9150306
 name: AI Hero Bot
 
 on:
@@ -29,7 +7,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 jobs:
   ai-hero:
@@ -44,87 +21,29 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Update hero with AI
+      - name: Install OpenAI SDK
+        run: pip install openai
+
+      - name: Run AI script safely (NO YAML HEREDOC)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
-        run: |
-          python3 - <<'PY'
-          import json, os, urllib.request
-          from pathlib import Path
-          file = Path("components/hero.tsx")
-          content = file.read_text()
-          prompt = f"""
-You are a senior frontend engineer.
- Check failure on line 39 in .github/workflows/main.yml
+        run: python3 scripts/update_hero.py
 
-
-GitHub Actions
-/ .github/workflows/main.yml
-Invalid workflow file
-
-You have an error in your yaml syntax on line 39
-
-Return ONLY JSON:
-{{
-  "headline": "...",
-  "subheadline": "...",
-  "primary_cta": "...",
-  "secondary_cta": "..."
-}}
-
-Make it better for a payment landing page.
-
-Issue:
-{os.environ["ISSUE_TITLE"]}
-{os.environ["ISSUE_BODY"]}
-"""
-          req = urllib.request.Request(
-              "https://api.openai.com/v1/responses",
-              data=json.dumps({
-                  "model": "gpt-4.1-mini",
-                  "input": prompt
-              }).encode(),
-              headers={
-                  "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
-                  "Content-Type": "application/json"
-              }
-          )
-
-          try:
-              res = urllib.request.urlopen(req).read()
-              data = json.loads(res)
-              text = data["output"][0]["content"][0]["text"]
-              start, end = text.find("{"), text.rfind("}") + 1
-              ai = json.loads(text[start:end])
-          except:
-              ai = {
-                  "headline": "Get approved faster with payments",
-                  "subheadline": "Simple onboarding for merchants worldwide",
-                  "primary_cta": "Get Started",
-                  "secondary_cta": "Learn More"
-              }
-
-          content = content.replace(
-              content.split("<h1")[1].split("</h1>")[0],
-              f'h1>{ai["headline"]}<'
-          )
-
-          file.write_text(content)
-          print("updated hero")
-          PY
-
-      - name: Create branch + commit
+      - name: Commit changes
         run: |
           git config user.name "ai-bot"
           git config user.email "ai@bot.com"
-          branch="ai-hero-${{ github.run_id }}"
-          git checkout -b $branch
-          git add .
-          git commit -m "AI hero update" || echo "no changes"
-          git push origin $branch
-      - name: Create PR
+
+          BRANCH="ai-hero-${{ github.run_id }}"
+          git checkout -b $BRANCH
+
+          git add components/hero.tsx
+          git commit -m "AI hero update" || exit 0
+          git push origin $BRANCH
+
+      - name: Create Pull Request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
