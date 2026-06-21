@@ -1,4 +1,4 @@
-name: AI PR Bot Fixed
+name: AI Hero Improvement Bot
 
 on:
   issues:
@@ -10,79 +10,157 @@ permissions:
   issues: write
 
 jobs:
-  ai-pr:
+  improve-hero:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Read repo
-        run: ls -R > repo.txt
-
-      - name: Call OpenAI (fixed safe version)
+      - name: Update hero copy with AI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          ISSUE_TITLE="${{ github.event.issue.title }}"
-          ISSUE_BODY="${{ github.event.issue.body }}"
-
-          RESPONSE=$(curl -s https://api.openai.com/v1/responses \
-          -H "Authorization: Bearer $OPENAI_API_KEY" \
-          -H "Content-Type: application/json" \
-          -d "{\"model\":\"gpt-4.1-mini\",\"input\":\"You are a senior software engineer. Return ONLY valid JSON. Format: { \\\"files\\\": [ { \\\"path\\\": \\\"index.html\\\", \\\"content\\\": \\\"hello\\\" } ] }. Issue: $ISSUE_TITLE $ISSUE_BODY\"}")
-
-          echo "$RESPONSE" > ai.json
-
-      - name: Extract JSON safely
-        run: |
-          python3 - << 'EOF'
+          python3 - <<'PY'
           import json
+          import os
+          import re
+          import sys
+          import urllib.request
+          from pathlib import Path
 
-          raw = open("ai.json").read()
+          path = Path("components/hero.tsx")
+          content = path.read_text(encoding="utf-8")
 
-          start = raw.find("{")
-          end = raw.rfind("}") + 1
+          prompt = "\n".join([
+              "You are a senior conversion-focused frontend engineer.",
+              "Return ONLY valid JSON with exactly four string keys:",
+              "headline, subheadline, primary_cta, secondary_cta.",
+              "Do not include markdown fences or explanation.",
+              "Write concise, high-converting copy for a payment-processing landing page hero.",
+              "",
+              f"Issue title: {os.environ['ISSUE_TITLE']}",
+              f"Issue body: {os.environ['ISSUE_BODY']}",
+          ])
 
-          clean = raw[start:end]
+          payload = json.dumps({
+              "model": "gpt-4.1-mini",
+              "input": prompt,
+          }).encode("utf-8")
 
-          open("changes.json","w").write(clean)
-          EOF
+          req = urllib.request.Request(
+              "https://api.openai.com/v1/responses",
+              data=payload,
+              headers={
+                  "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
 
-      - name: Apply changes
-        run: |
-          python3 - << 'EOF'
-          import json, os
+          defaults = {
+              "headline": "Get approved faster with payment processing built for growth",
+              "subheadline": "We connect growing and digital-first merchants with vetted, certified payment processors. Improve approval odds, stay compliant, and scale without handling sensitive card data yourself.",
+              "primary_cta": "Get Started Today",
+              "secondary_cta": "See How It Works",
+          }
 
-          data = json.load(open("changes.json"))
+          data = defaults
 
-          for f in data.get("files", []):
-              path = f["path"]
-              content = f["content"]
+          try:
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  resp = json.load(r)
+              text = resp["output"][0]["content"][0]["text"]
+              start = text.find("{")
+              end = text.rfind("}") + 1
+              if start == -1 or end == 0:
+                  raise ValueError("No JSON object in model output")
+              data = json.loads(text[start:end])
+              for key in defaults:
+                  if key not in data or not isinstance(data[key], str) or not data[key].strip():
+                      data = defaults
+                      break
+          except Exception as exc:
+              print(f"OpenAI fallback used: {exc}", file=sys.stderr)
 
-              os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+          content = re.sub(
+              r'<h1 className="text-balance text-4xl font-bold tracking-tight md:text-6xl">.*?</h1>',
+              f'''<h1 className="text-balance text-4xl font-bold tracking-tight md:text-6xl">
+                {data["headline"]}
+              </h1>''',
+              content,
+              count=1,
+              flags=re.S,
+          )
 
-              with open(path, "w") as file:
-                  file.write(content)
-          EOF
+          content = re.sub(
+              r'<p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">.*?</p>',
+              f'''<p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
+                {data["subheadline"]}
+              </p>''',
+              content,
+              count=1,
+              flags=re.S,
+          )
 
-      - name: Commit changes
+          content = content.replace("Get Started Today", data["primary_cta"])
+          content = content.replace("See How It Works", data["secondary_cta"])
+
+          path.write_text(content, encoding="utf-8")
+          print("components/hero.tsx updated")
+          PY
+
+      - name: Create branch, commit, and push
         run: |
           git config user.name "AI Bot"
           git config user.email "bot@ai.com"
 
-          git checkout -b ai-${{ github.run_id }}
+          branch="ai-hero-${{ github.run_id }}"
+          git checkout -b "$branch"
+          git add components/hero.tsx
+          git commit -m "Improve homepage hero from issue" || echo "No changes to commit"
+          git push origin "$branch"
 
-          git add .
-          git commit -m "AI patch" || echo "no changes"
-          git push origin ai-${{ github.run_id }}
-
-      - name: Create PR
+      - name: Open Pull Request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          curl -s -X POST \
-          -H "Authorization: token $GITHUB_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          https://api.github.com/repos/${{ github.repository }}/pulls \
-          -d "{\"title\":\"AI Patch\",\"head\":\"ai-${{ github.run_id }}\",\"base\":\"main\"}"
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          branch = f"ai-hero-{os.environ['GITHUB_RUN_ID']}"
+          payload = {
+              "title": f"AI Hero improvement: {os.environ['ISSUE_TITLE']}",
+              "head": branch,
+              "base": "main",
+              "body": (
+                  "Automated hero improvement generated from the opened issue.\n\n"
+                  f"Issue title: {os.environ['ISSUE_TITLE']}\n"
+                  f"Issue body: {os.environ['ISSUE_BODY']}"
+              ),
+          }
+
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/pulls",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+
+          with urllib.request.urlopen(req, timeout=120) as r:
+              resp = json.load(r)
+
+          print(resp.get("html_url", "PR created"))
+          PY
