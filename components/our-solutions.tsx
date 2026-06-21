@@ -22,7 +22,7 @@ export function OurSolutions() {
             Tailored Solutions for Your Business
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            We provide a comprehensive suite of payment processing solutions designed to meet the specific needs of modern merchants, especially those in complex and high-growth sectors.
+            We offer a comprehensive suite of payment processing solutions, precisely tailored for modern merchants in complex and high-growth sectors.
           </p>
         </div>
 
