@@ -2,6 +2,7 @@
 
 import { Phone, MessageCircle, X } from "lucide-react"
 import { useState, useEffect } from "react"
+import { trackPhoneClick } from "@/lib/tracking"
 
 export function StickyCTA() {
   const [isVisible, setIsVisible] = useState(true)
@@ -37,6 +38,7 @@ export function StickyCTA() {
             {/* Phone */}
             <a
               href="tel:+1234567890"
+              onClick={() => trackPhoneClick("call")}
               className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-medium text-sm transition-all hover:bg-primary/90 active:scale-95"
             >
               <Phone className="h-4 w-4" />
@@ -49,6 +51,7 @@ export function StickyCTA() {
               href="https://wa.me/1234567890?text=Hi%20I%20need%20payment%20processing%20solutions"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackPhoneClick("whatsapp")}
               className="inline-flex items-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2 font-medium text-sm transition-all hover:bg-green-700 active:scale-95"
             >
               <MessageCircle className="h-4 w-4" />
