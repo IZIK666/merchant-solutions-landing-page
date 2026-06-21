@@ -124,28 +124,24 @@ jobs:
           git add components/hero.tsx
           git commit -m "Improve homepage hero from issue" || echo "No changes to commit"
           git push origin "$branch"
+- name: Open Pull Request
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    branch="ai-hero-${{ github.run_id }}"
 
-      - name: Open Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
-        run: |
-          python3 - <<'PY'
-          import json
-          import os
-          import urllib.request
+    RESPONSE=$(curl -s -X POST \
+      -H "Authorization: token $GITHUB_TOKEN" \
+      -H "Accept: application/vnd.github+json" \
+      https://api.github.com/repos/${{ github.repository }}/pulls \
+      -d "{
+        \"title\": \"AI Hero improvement\",
+        \"head\": \"$branch\",
+        \"base\": \"main\",
+        \"body\": \"Automated AI update from GitHub Issue\"
+      }")
 
-          branch = f"ai-hero-{os.environ['GITHUB_RUN_ID']}"
-          payload = {
-              "title": f"AI Hero improvement: {os.environ['ISSUE_TITLE']}",
-              "head": branch,
-              "base": "main",
-              "body": (
-                  "Automated hero improvement generated from the opened issue.\n\n"
-                  f"Issue title: {os.environ['ISSUE_TITLE']}\n"
-                  f"Issue body: {os.environ['ISSUE_BODY']}"
-              ),
+    echo "$RESPONSE"
           }
 
           req = urllib.request.Request(
