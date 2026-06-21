@@ -24,26 +24,120 @@ jobs:
       - name: Install OpenAI SDK
         run: pip install openai
 
-      - name: Run AI script safely (NO YAML HEREDOC)
+      - name: Run AI update (single file, no scripts)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
-        run: python3 scripts/update_hero.py
 
-      - name: Commit changes
+        run: |
+          python3 << 'PY'
+          import os
+          import json
+          import re
+          from pathlib import Path
+          from openai import OpenAI
+
+          # -----------------------------
+          # OpenAI init
+          # -----------------------------
+          client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+          issue_title = os.getenv("ISSUE_TITLE", "")
+          issue_body = os.getenv("ISSUE_BODY", "")
+
+          prompt = f"""
+Return ONLY valid JSON:
+{{
+  "headline": "",
+  "subheadline": "",
+  "primary_cta": "",
+  "secondary_cta": ""
+}}
+
+Make it premium fintech landing page copy.
+
+Issue:
+{issue_title}
+{issue_body}
+"""
+
+          # -----------------------------
+          # AI call
+          # -----------------------------
+          try:
+              res = client.responses.create(
+                  model="gpt-4.1-mini",
+                  input=prompt
+              )
+
+              data = json.loads(res.output_text.strip())
+
+          except Exception:
+              data = {}
+
+          ai = {
+              "headline": data.get("headline", "Fast Payments for Modern Businesses"),
+              "subheadline": data.get("subheadline", "Simple onboarding and global payouts"),
+              "primary_cta": data.get("primary_cta", "Get Started"),
+              "secondary_cta": data.get("secondary_cta", "Learn More")
+          }
+
+          # -----------------------------
+          # Load hero file
+          # -----------------------------
+          file_path = Path("components/hero.tsx")
+
+          if not file_path.exists():
+              print("hero.tsx missing")
+              exit(1)
+
+          content = file_path.read_text()
+
+          # -----------------------------
+          # Safe updates (no split, no crash)
+          # -----------------------------
+          content = re.sub(
+              r"<h1[^>]*>.*?</h1>",
+              f"<h1>{ai['headline']}</h1>",
+              content,
+              flags=re.DOTALL
+          )
+
+          content = re.sub(
+              r"<h2[^>]*>.*?</h2>",
+              f"<h2>{ai['subheadline']}</h2>",
+              content,
+              flags=re.DOTALL
+          )
+
+          buttons = re.findall(r"<button[^>]*>(.*?)</button>", content, flags=re.DOTALL)
+
+          if len(buttons) >= 1:
+              content = content.replace(buttons[0], ai["primary_cta"])
+
+          if len(buttons) >= 2:
+              content = content.replace(buttons[1], ai["secondary_cta"])
+
+          file_path.write_text(content)
+
+          print("Hero updated successfully")
+          PY
+
+      - name: Create branch + commit
         run: |
           git config user.name "ai-bot"
           git config user.email "ai@bot.com"
 
           BRANCH="ai-hero-${{ github.run_id }}"
-          git checkout -b $BRANCH
 
+          git checkout -b $BRANCH
           git add components/hero.tsx
+
           git commit -m "AI hero update" || exit 0
           git push origin $BRANCH
 
-      - name: Create Pull Request
+      - name: Create PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
