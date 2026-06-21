@@ -1,12 +1,16 @@
 import { Card } from "@/components/ui/card"
-import { Gamepad2, Bitcoin, LineChart, RefreshCw, ShoppingBag } from "lucide-react"
+import { Gamepad2, Bitcoin, LineChart, RefreshCw, ShoppingBag, FlaskConical, HeartCrack, Leaf, ShieldAlert } from "lucide-react"
 
 const industries = [
-  { icon: Gamepad2, title: "iGaming & Gaming", desc: "Online entertainment platforms with global player bases." },
-  { icon: Bitcoin, title: "Crypto & Web3", desc: "Exchanges and digital-asset platforms needing reliable rails." },
-  { icon: LineChart, title: "Forex & Trading", desc: "Brokerages and trading platforms across regulated markets." },
-  { icon: RefreshCw, title: "Subscriptions & SaaS", desc: "Recurring-revenue businesses optimizing retention." },
-  { icon: ShoppingBag, title: "E-commerce & Retail", desc: "High-volume online stores selling worldwide." },
+  { icon: Gamepad2, title: "Gaming & iGaming", desc: "Online entertainment, casinos, and sports betting platforms with global player bases." },
+  { icon: FlaskConical, title: "Peptides & Nutraceuticals", desc: "Specialized health and wellness products requiring compliant payment solutions." },
+  { icon: HeartCrack, title: "Adult Entertainment", desc: "Platforms and services in the adult industry needing discreet and robust processing." },
+  { icon: Leaf, title: "CBD & Cannabis", desc: "Merchants in the evolving CBD and legal cannabis markets." },
+  { icon: Bitcoin, title: "Crypto & Web3", desc: "Exchanges and digital-asset platforms needing reliable rails for virtual currencies." },
+  { icon: LineChart, title: "Forex & Trading", desc: "Brokerages and trading platforms operating in volatile financial markets." },
+  { icon: RefreshCw, title: "Subscriptions & SaaS", desc: "Recurring-revenue businesses optimizing retention and managing churn." },
+  { icon: ShoppingBag, title: "E-commerce & Retail", desc: "High-volume online stores selling worldwide, including digital goods." },
+  { icon: ShieldAlert, title: "Other High-Risk", desc: "Any business operating in regulated or high-chargeback environments." },
 ]
 
 const methods = [
@@ -27,11 +31,10 @@ export function Industries() {
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-medium uppercase tracking-widest text-primary">Industries</p>
           <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight md:text-4xl">
-            Specialists in complex verticals
+            Specialists in High-Risk & Complex Verticals
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            We understand the underwriting nuances of demanding industries and connect
-            you with processors that genuinely support them.
+            We excel in navigating the unique payment challenges of high-risk and regulated industries, connecting you with robust, compliant processing partners.
           </p>
         </div>
 

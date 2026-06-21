@@ -3,6 +3,9 @@ import { Hero } from "@/components/hero"
 import { WhyUs } from "@/components/why-us"
 import { HowItWorks } from "@/components/how-it-works"
 import { Industries } from "@/components/industries"
+import { CardAcquiring } from "@/components/card-acquiring"
+import { ComplianceStability } from "@/components/compliance-stability"
+import { OurSolutions } from "@/components/our-solutions"
 import { Results } from "@/components/results"
 import { ContactForm } from "@/components/contact-form"
 import { SiteFooter } from "@/components/site-footer"
@@ -16,6 +19,9 @@ export default function Home() {
         <WhyUs />
         <HowItWorks />
         <Industries />
+        <CardAcquiring />
+        <ComplianceStability />
+        <OurSolutions />
         <Results />
         <ContactForm />
       </main>
