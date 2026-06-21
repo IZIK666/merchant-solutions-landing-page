@@ -26,17 +26,12 @@ export function Hero() {
           </div>
 
           <h1 className="text-balance text-4xl font-bold tracking-tight md:text-6xl">
-            Payment processing that gets your business{" "}
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              approved
-            </span>
-          </h1>
+      Get approved faster with payment processing built for growth
+    </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground">
-            We connect growing and digital-first merchants with vetted, certified
-            payment processors. You get higher approval rates and compliant
-            infrastructure — without ever handling sensitive card data yourself.
-          </p>
+      We connect growing and digital-first merchants with vetted, certified payment processors. Improve approval odds, stay compliant, and scale without handling sensitive card data yourself.
+    </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button render={<a href="#contact" />} nativeButton={false} size="lg" className="w-full sm:w-auto">
