@@ -10,9 +10,11 @@ permissions:
 
 jobs:
   ai-hero:
-    # רק רץ אם מי שפתח את ה-issue הוא בעל הרשאות כתיבה בריפו (לא כל מי שיכול לפתוח issue ציבורי)
-    # OWNER/MEMBER/COLLABORATOR = שייכים לארגון/ריפו. אם תרצה לפתוח גם ל-trusted חיצוניים,
-    # אפשר להחליף לבדיקת לייבל "ai-approved" שמוסיף מנטיין אחרי בדיקה.
+    # Only runs if the person who opened the issue has write access to the repo
+    # (not just anyone who can open a public issue).
+    # OWNER/MEMBER/COLLABORATOR = belong to the org/repo. If you want to allow
+    # trusted external contributors too, you can switch this to checking for an
+    # "ai-approved" label that a maintainer adds after review.
     if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association)
     runs-on: ubuntu-latest
     steps:
