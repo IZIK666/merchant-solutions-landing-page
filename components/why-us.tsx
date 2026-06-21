@@ -51,7 +51,7 @@ export function WhyUs() {
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
-            <Card key={feature.title} className="p-6 transition-shadow hover:shadow-md">
+            <Card key={feature.title} className="p-6 transition-shadow hover:shadow-md"> {/* Kept existing shadow transition */}
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                 <feature.icon className="h-5 w-5" />
               </div>

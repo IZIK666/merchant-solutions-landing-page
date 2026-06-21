@@ -39,7 +39,7 @@ export function StickyCTA() {
             <a
               href="tel:+1234567890"
               onClick={() => trackPhoneClick("call")}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-medium text-sm transition-all hover:bg-primary/90 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-medium text-sm transition-all hover:bg-primary/90 active:scale-95 hover:shadow-lg hover:shadow-primary/30"
             >
               <Phone className="h-4 w-4" />
               <span className="hidden sm:inline">Call Now</span>
@@ -52,7 +52,7 @@ export function StickyCTA() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => trackPhoneClick("whatsapp")}
-              className="inline-flex items-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2 font-medium text-sm transition-all hover:bg-green-700 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2 font-medium text-sm transition-all hover:bg-green-700 active:scale-95 hover:shadow-lg hover:shadow-green-600/30"
             >
               <MessageCircle className="h-4 w-4" />
               <span className="hidden sm:inline">WhatsApp</span>
