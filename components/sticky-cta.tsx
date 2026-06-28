@@ -37,7 +37,7 @@ export function StickyCTA() {
           <div className="flex gap-2 sm:gap-3">
             {/* Phone */}
             <a
-              href="tel:+1234567890"
+              href="tel:+32472833980"
               onClick={() => trackPhoneClick("call")}
               className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-medium text-sm transition-all hover:bg-primary/90 active:scale-95"
             >
@@ -48,7 +48,7 @@ export function StickyCTA() {
 
             {/* WhatsApp */}
             <a
-              href="https://wa.me/1234567890?text=Hi%20I%20need%20payment%20processing%20solutions"
+              href="https://wa.me/+32472833980?text=Hi%20I%20need%20payment%20processing%20solutions"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => trackPhoneClick("whatsapp")}
