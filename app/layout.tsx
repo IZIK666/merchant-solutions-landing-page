@@ -55,21 +55,23 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   const GA_ID = process.env.NEXT_PUBLIC_GA_ID
   const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID
   const LINKEDIN_PARTNER_ID = process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID
 
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} bg-background`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} bg-background`}
+    >
       <head>
         {/* Google Analytics */}
         {GA_ID && (
           <>
             <Script
-              async
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
               strategy="afterInteractive"
             />
@@ -96,7 +98,9 @@ export default function RootLayout({
               t.src=v;s=b.getElementsByTagName(e)[0];
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
+              
               fbq('init', '${FB_PIXEL_ID}');
+              fbq('track', 'PageView');
             `}
           </Script>
         )}
@@ -122,10 +126,24 @@ export default function RootLayout({
             `}
           </Script>
         )}
-        {FB_PIXEL_ID && <noscript><img height="1" width="1" style={{display:'none'}} src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`} /></noscript>}
       </head>
+
       <body className="font-sans antialiased">
         {children}
+
+        {/* Facebook noscript fallback */}
+        {FB_PIXEL_ID && (
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              style={{ display: 'none' }}
+              src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`}
+              alt=""
+            />
+          </noscript>
+        )}
+
         {process.env.NODE_ENV === 'production' && <Analytics />}
         <ClientTrackingInitializer />
       </body>
