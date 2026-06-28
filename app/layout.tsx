@@ -15,7 +15,9 @@ export const metadata: Metadata = {
   title: 'Merchant Solutions | Payment Onboarding for Growing Businesses',
   description:
     'We connect high-volume and digital merchants with vetted, certified payment processors. Higher approvals, compliant infrastructure, and global reach.',
+
   generator: 'v0.app',
+
   icons: {
     icon: [
       {
@@ -33,21 +35,23 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
-  
-}openGraph: {
-  title: 'Merchant Solutions | Payment Onboarding for Growing Businesses',
-  description:
-    'We connect high-volume and digital merchants with vetted payment processors. Higher approvals and global reach.',
-  url: 'https://merchant-solutions-landing-page.vercel.app/',
-  siteName: 'Merchant Solutions',
-  type: 'website',
-},
-twitter: {
-  card: 'summary_large_image',
-  title: 'Merchant Solutions',
-  description:
-    'Payment onboarding & merchant solutions for growing businesses.',
-},
+
+  openGraph: {
+    title: 'Merchant Solutions | Payment Onboarding for Growing Businesses',
+    description:
+      'We connect high-volume and digital merchants with vetted payment processors. Higher approvals and global reach.',
+    url: 'https://merchant-solutions-landing-page.vercel.app/',
+    siteName: 'Merchant Solutions',
+    type: 'website',
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Merchant Solutions',
+    description:
+      'Payment onboarding & merchant solutions for growing businesses.',
+  },
+}
 
 export default function RootLayout({
   children,
